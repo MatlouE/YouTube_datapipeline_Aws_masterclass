@@ -1,0 +1,1 @@
+aws s3 cp CAvideos.csv s3://yt-data-pipeline-bronze-e/youtube/raw_statistics/region=
