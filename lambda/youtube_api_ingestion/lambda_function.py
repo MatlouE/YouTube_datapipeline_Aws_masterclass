@@ -19,11 +19,12 @@ import json
 import os
 import logging
 from datetime import datetime, timezone
+#http plugins alternative to import requests
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 
-import boto3
+import boto3#allows communiction with was services
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logger = logging.getLogger()
