@@ -27,8 +27,9 @@ from urllib.parse import urlencode
 import boto3#allows communiction with was services
 
 # ── Logging ──────────────────────────────────────────────────────────────────
+# instantiating logger object
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.INFO) # setting base log level
 
 # ── AWS Clients ──────────────────────────────────────────────────────────────
 s3_client = boto3.client("s3")
@@ -48,10 +49,11 @@ def fetch_trending_videos(region_code: str) -> dict:
     Call the YouTube Data API to get the current trending videos
     for a given region.
     """
+    #urlencode - converts python dict into readable http params
     params = urlencode({
-        "part": "snippet,statistics,contentDetails",
-        "chart": "mostPopular",
-        "regionCode": region_code,
+        "part": "snippet,statistics,contentDetails",#tells youtube which sections of info we want
+        "chart": "mostPopular", #the type in this case the MOstPopular/trending videos
+        "regionCode": region_code, 
         "maxResults": MAX_RESULTS,
         "key": API_KEY,
     })
