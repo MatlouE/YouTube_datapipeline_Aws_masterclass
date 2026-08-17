@@ -24,7 +24,7 @@ from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 
-import boto3#allows communiction with was services
+import boto3 #allows communiction with was services
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 # instantiating logger object
@@ -83,12 +83,14 @@ def fetch_video_categories(region_code: str) -> dict:
 
 def write_to_s3(data: dict, bucket: str, key: str) -> dict:
     """Write JSON data to S3 with metadata."""
+    #ensure_ascii - for normaliziling the text , indent=2 for keeping the text ordered
     body = json.dumps(data, ensure_ascii=False, indent=2)
     response = s3_client.put_object(
         Bucket=bucket,
         Key=key,
         Body=body.encode("utf-8"),
         ContentType="application/json",
+        #metadata we attach to the data, timestamp for historic tracking 
         Metadata={
             "ingestion_timestamp": datetime.now(timezone.utc).isoformat(),
             "source": "youtube_data_api_v3",
