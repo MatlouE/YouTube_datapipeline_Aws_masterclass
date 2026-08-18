@@ -1,12 +1,14 @@
 # YouTube Data Pipeline - AWS Masterclass
 
-This repository contains a small data engineering project for downloading and organizing YouTube video statistics datasets from Kaggle and preparing them for upload to AWS S3.
+A cloud-native ETL pipeline that ingests YouTube trending video data across 10 regions, transforms it through a medallion architecture (Bronze > Silver > Gold), enforces data quality gates, and produces analytics-ready aggregations — all orchestrated by AWS Step Functions.
+
+<img src='/workspaces/YouTube_datapipeline_Aws_masterclass/YouTube Trending Data Pipeline.png' alt='Pipeline Architecture'>
 
 ## Project overview
 
 The project includes:
 - A Python script to download the Kaggle dataset into the local data directory.
-- AWS-related scripts and notes for copying data into S3-compatible storage.
+- AWS-related scripts and notes for uploading data into S3-compatible storage.
 - Sample reference data and video statistics files under the data folder.
 
 ## Repository structure
