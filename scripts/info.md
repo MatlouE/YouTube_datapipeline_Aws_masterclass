@@ -8,4 +8,4 @@ Glue Bronze - yt-pipeline-bronze-dev
 Glue silver - yt-pipeline-silver-dev
 Glue Gold - yt_pipeline_gold_dev
 
-sns-arn:aws:sns:af-south-1:726621696217:yt-data-pipeline-alerts-dev:7cbb6892-5879-49d1-9731-807f8040fda2
+sns-arn:aws:sns:af-south-1:726621696217:yt-data-pipeline-alerts-dev
