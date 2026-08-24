@@ -230,4 +230,9 @@ def lambda_handler(event, context):
             Message=json.dumps(failed, indent=2, default=str),
         )
 
-    
+    return {
+            "quality_passed": bool(overall_passed),
+            "checks_passed": int(passed_count),
+            "checks_total": int(total_count),
+            "details": json.loads(json.dumps(all_results, default=str)),
+        }
