@@ -82,6 +82,10 @@ datasource = glueContext.create_dynamic_frame.from_catalog(
 )
 
 df = datasource.toDF()
+
+logger.info(f"Spark columns: {df.columns}")
+df.printSchema()
+
 initial_count = df.count()
 logger.info(f"Bronze records read: {initial_count}")
 
