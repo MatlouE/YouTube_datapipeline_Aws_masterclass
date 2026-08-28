@@ -98,62 +98,58 @@ else:
     # Handle both Kaggle CSV format and YouTube API JSON format
     columns = set(df.columns)
 
-    if "snippet.title" in columns or "snippet__title" in columns:
-        # YouTube API format — flatten nested structure
-        logger.info("Detected YouTube API format — flattening...")
-        df = df.select(
-            F.col("id").alias("video_id"),
-            F.lit(datetime.utcnow().strftime("%y.%d.%m")).alias("trending_date"),
-            F.col("`snippet.title`").alias("title") if "snippet.title" in columns
-                else F.col("snippet__title").alias("title"),
-            F.col("`snippet.channelTitle`").alias("channel_title") if "snippet.channelTitle" in columns
-                else F.col("snippet__channelTitle").alias("channel_title"),
-            F.col("`snippet.categoryId`").cast(LongType()).alias("category_id") if "snippet.categoryId" in columns
-                else F.col("snippet__categoryId").cast(LongType()).alias("category_id"),
-            F.col("`snippet.publishedAt`").alias("publish_time") if "snippet.publishedAt" in columns
-                else F.col("snippet__publishedAt").alias("publish_time"),
-            F.col("`snippet.tags`").alias("tags") if "snippet.tags" in columns
-                else F.lit(None).cast(StringType()).alias("tags"),
-            F.col("`statistics.viewCount`").cast(LongType()).alias("views") if "statistics.viewCount" in columns
-                else F.col("statistics__viewCount").cast(LongType()).alias("views"),
-            F.col("`statistics.likeCount`").cast(LongType()).alias("likes") if "statistics.likeCount" in columns
-                else F.col("statistics__likeCount").cast(LongType()).alias("likes"),
-            F.col("`statistics.dislikeCount`").cast(LongType()).alias("dislikes") if "statistics.dislikeCount" in columns
-                else F.lit(0).cast(LongType()).alias("dislikes"),
-            F.col("`statistics.commentCount`").cast(LongType()).alias("comment_count") if "statistics.commentCount" in columns
-                else F.col("statistics__commentCount").cast(LongType()).alias("comment_count"),
-            F.col("`snippet.thumbnails.default.url`").alias("thumbnail_link") if "snippet.thumbnails.default.url" in columns
-                else F.lit(None).cast(StringType()).alias("thumbnail_link"),
-            F.lit(False).alias("comments_disabled"),
-            F.lit(False).alias("ratings_disabled"),
-            F.lit(False).alias("video_error_or_removed"),
-            F.col("`snippet.description`").alias("description") if "snippet.description" in columns
-                else F.col("snippet__description").alias("description"),
-            F.col("region"),
-        )
-    else:
-        # Kaggle CSV format — just cast types
-        logger.info("Detected Kaggle CSV format — casting types...")
-        df = df.select(
-            F.col("video_id").cast(StringType()),
-            F.col("trending_date").cast(StringType()),
-            F.col("title").cast(StringType()),
-            F.col("channel_title").cast(StringType()),
-            F.col("category_id").cast(LongType()),
-            F.col("publish_time").cast(StringType()),
-            F.col("tags").cast(StringType()),
-            F.col("views").cast(LongType()),
-            F.col("likes").cast(LongType()),
-            F.col("dislikes").cast(LongType()),
-            F.col("comment_count").cast(LongType()),
-            F.col("thumbnail_link").cast(StringType()),
-            F.col("comments_disabled").cast(BooleanType()),
-            F.col("ratings_disabled").cast(BooleanType()),
-            F.col("video_error_or_removed").cast(BooleanType()),
-            F.col("description").cast(StringType()),
-            F.col("region").cast(StringType()),
-        )
+if "items" in columns:
+    # YouTube API format — explode the items array first
+    logger.info("Detected YouTube API format — exploding items array...")
 
+    df = df.select(
+        F.explode("items").alias("item"),
+        "region"
+    )
+
+    df = df.select(
+        F.col("item.id").alias("video_id"),
+        F.lit(datetime.utcnow().strftime("%y.%d.%m")).alias("trending_date"),
+        F.col("item.snippet.title").alias("title"),
+        F.col("item.snippet.channelTitle").alias("channel_title"),
+        F.col("item.snippet.categoryId").cast(LongType()).alias("category_id"),
+        F.col("item.snippet.publishedAt").alias("publish_time"),
+        F.col("item.snippet.tags").cast(StringType()).alias("tags"),
+        F.col("item.statistics.viewCount").cast(LongType()).alias("views"),
+        F.col("item.statistics.likeCount").cast(LongType()).alias("likes"),
+        F.lit(0).cast(LongType()).alias("dislikes"),
+        F.col("item.statistics.commentCount").cast(LongType()).alias("comment_count"),
+        F.col("item.snippet.thumbnails.default.url").alias("thumbnail_link"),
+        F.lit(False).alias("comments_disabled"),
+        F.lit(False).alias("ratings_disabled"),
+        F.lit(False).alias("video_error_or_removed"),
+        F.col("item.snippet.description").alias("description"),
+        F.col("region"),
+    )
+
+else:
+    # Kaggle CSV format — just cast types
+    logger.info("Detected Kaggle CSV format — casting types...")
+
+    df = df.select(
+        F.col("video_id").cast(StringType()),
+        F.col("trending_date").cast(StringType()),
+        F.col("title").cast(StringType()),
+        F.col("channel_title").cast(StringType()),
+        F.col("category_id").cast(LongType()),
+        F.col("publish_time").cast(StringType()),
+        F.col("tags").cast(StringType()),
+        F.col("views").cast(LongType()),
+        F.col("likes").cast(LongType()),
+        F.col("dislikes").cast(LongType()),
+        F.col("comment_count").cast(LongType()),
+        F.col("thumbnail_link").cast(StringType()),
+        F.col("comments_disabled").cast(BooleanType()),
+        F.col("ratings_disabled").cast(BooleanType()),
+        F.col("video_error_or_removed").cast(BooleanType()),
+        F.col("description").cast(StringType()),
+        F.col("region").cast(StringType()),
+    )
 
     # ── Step 3: Data Cleansing ──────────────────────────────────────────────
     logger.info("Cleansing data...")
