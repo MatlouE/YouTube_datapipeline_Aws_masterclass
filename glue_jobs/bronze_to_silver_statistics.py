@@ -92,12 +92,14 @@ logger.info("Reading from Bronze catalog...")
 # This allows Spark to perform partition pruning.
 predicate = "region in ('ca', 'gb', 'us', 'in')"
 
+# Read the Bronze table into a Glue DynamicFrame.
 datasource = glueContext.create_dynamic_frame.from_catalog(
     database=BRONZE_DB,
     table_name=BRONZE_TABLE,
-    transformation_ctx="datasource",
-    push_down_predicate=predicate,
+    transformation_ctx="datasource",#operation name
+    push_down_predicate=predicate,#filtering partitions by predicate
 )
+
 
 df = datasource.toDF()
 
