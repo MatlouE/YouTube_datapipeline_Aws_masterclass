@@ -448,7 +448,7 @@ else:
 
     logger.info("Running data quality checks...")
 
-
+    #dictionary to keep track of how many nulls we find in certain important columns
     null_counts = {}
 
 
@@ -496,7 +496,7 @@ else:
             f"with negative views"
         )
 
-
+    #final DQ log
     logger.info(
         f"DQ check complete. "
         f"Null counts: {null_counts}"
