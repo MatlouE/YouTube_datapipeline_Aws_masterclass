@@ -429,7 +429,7 @@ else:
             F.row_number().over(window),
         )
         .filter(
-            F.col("_row_num") == 1
+            F.col("_row_num") == 1 #filter most recent entry then delete _row_num col since we dont need it moving forward
         )
         .drop("_row_num")
     )
