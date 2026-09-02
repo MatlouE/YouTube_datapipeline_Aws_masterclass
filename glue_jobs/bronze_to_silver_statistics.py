@@ -519,11 +519,12 @@ else:
 
 
     # Configure the S3 sink.
+    # Create an output destination, and that destination is S3.
     sink = glueContext.getSink(
         connection_type="s3",
         path=SILVER_PATH,
         enableUpdateCatalog=True,
-        updateBehavior="UPDATE_IN_DATABASE",
+        updateBehavior="UPDATE_IN_DATABASE", #Update the existing Glue Catalog table with the schema/information associated with this write
         partitionKeys=["region"],
     )
 
