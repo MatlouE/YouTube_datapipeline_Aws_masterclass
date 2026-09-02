@@ -299,16 +299,17 @@ else:
     df = df.withColumn(
         "trending_date_parsed",
 
+        #reg expression to check if the trending_date is in the format of YY.DD.MM
         F.when(
             F.col("trending_date").rlike(
-                r"^\d{2}\.\d{2}\.\d{2}$"
+                r"^\d{2}\.\d{2}\.\d{2}$"  
             ),
 
             F.to_date(
                 F.col("trending_date"),
                 "yy.dd.MM",
             ),
-
+        #if not then treat it as a normal date format
         ).otherwise(
 
             F.to_date(
