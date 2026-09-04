@@ -555,6 +555,6 @@ else:
 
 # ── Commit Glue Job ──────────────────────────────────────────────────────────
 
-job.commit()
+job.commit() #close glue job
 
 logger.info("Glue job committed successfully.")
