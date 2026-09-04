@@ -73,32 +73,36 @@ logger.info(f"Bronze Kaggle: {BRONZE_DB}.{API_TABLE}")
 logger.info(f"Silver: {SILVER_DB}.{SILVER_TABLE} → {SILVER_PATH}")
 
 
-# ── Step 1: Read from Bronze ────────────────────────────────────────────────
+# ── Step 1: Read from Bronze Kaggle table ────────────────────────────────────────────────
 
-logger.info("Reading from Bronze catalog...")
+logger.info("Reading from Bronze Kaggle catalog...")
 
-# Include the regions currently configured for the pipeline.
-# This allows Spark to perform partition pruning.
-predicate = "region in ('ca', 'gb', 'us', 'in')"
-
-# Read the Bronze table into a Glue DynamicFrame.
-datasource = glueContext.create_dynamic_frame.from_catalog(
+kaggle_source = glueContext.create_dynamic_frame.from_catalog(
     database=BRONZE_DB,
-    table_name=BRONZE_TABLE,
-    transformation_ctx="datasource",#operation name
-    push_down_predicate=predicate,#filtering partitions by predicate
+    table_name=KAGGLE_TABLE,
+    transformation_ctx="kaggle_source",
 )
 
+kaggle_df = kaggle_source.toDF()
 
-df = datasource.toDF()
+kaggle_count = kaggle_df.count()
 
-logger.info(f"Spark columns: {df.columns}")
+logger.info(f"Kaggle records read from Bronze: {kaggle_count}")
 
-df.printSchema()
 
-initial_count = df.count()
+# ── Step 2: Read from Bronze API table ────────────────────────────────────────────────
 
-logger.info(f"Bronze records read: {initial_count}")
+api_source = glueContext.create_dynamic_frame.from_catalog(
+    database=BRONZE_DB,
+    table_name=API_TABLE,
+    transformation_ctx="api_source",
+)
+
+api_df = api_source.toDF()
+
+api_count = api_df.count()
+
+logger.info(f"API records read from Bronze: {api_count}")
 
 
 # ── Handle empty input ──────────────────────────────────────────────────────
