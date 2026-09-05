@@ -69,7 +69,7 @@ SILVER_PATH = f"s3://{SILVER_BUCKET}/youtube/statistics/"
 
 
 logger.info(f"Bronze Kaggle: {BRONZE_DB}.{KAGGLE_TABLE}")
-logger.info(f"Bronze Kaggle: {BRONZE_DB}.{API_TABLE}")
+logger.info(f"Bronze API: {BRONZE_DB}.{API_TABLE}")
 logger.info(f"Silver: {SILVER_DB}.{SILVER_TABLE} → {SILVER_PATH}")
 
 
@@ -89,6 +89,8 @@ kaggle_count = kaggle_df.count()
 
 logger.info(f"Kaggle records read from Bronze: {kaggle_count}")
 
+logger.info("Kaggle Bronze schema:")
+kaggle_df.printSchema()
 
 # ── Step 2: Read from Bronze API table ────────────────────────────────────────────────
 
@@ -104,7 +106,8 @@ api_count = api_df.count()
 
 logger.info(f"API records read from Bronze: {api_count}")
 
-
+logger.info("API Bronze schema:")
+api_df.printSchema()
 
     
     # ── Step 6: Write to Silver Layer ───────────────────────────────────────
