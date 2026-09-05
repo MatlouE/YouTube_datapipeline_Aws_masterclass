@@ -139,7 +139,35 @@ api_normalized_df = (
 
 logger.info("API data flattened and normalized.")
 
-    
+# ── Step 4: Normalize Bronze Kaggle data ───────────────────────────────────
+
+logger.info("Normalizing Kaggle Bronze data...")
+
+kaggle_normalized_df = (
+    kaggle_df
+    .select(
+        F.col("video_id"),
+        F.col("title"),
+        F.col("channel_title"),
+        F.col("category_id").cast(LongType()).alias("category_id"),
+        F.col("publish_time"),
+        F.col("tags"),
+        F.col("views").cast(LongType()).alias("views"),
+        F.col("likes").cast(LongType()).alias("likes"),
+        F.col("dislikes").cast(LongType()).alias("dislikes"),
+        F.col("comment_count").cast(LongType()).alias("comment_count"),
+        F.col("thumbnail_link"),
+        F.col("comments_disabled").cast(BooleanType()).alias("comments_disabled"),
+        F.col("ratings_disabled").cast(BooleanType()).alias("ratings_disabled"),
+        F.col("video_error_or_removed").cast(BooleanType()).alias("video_error_or_removed"),
+        F.col("description"),
+        F.col("region"),
+        F.col("trending_date"),
+    )
+)
+
+logger.info("Kaggle data normalized.")
+
     # ── Step 6: Write to Silver Layer ───────────────────────────────────────
 
     logger.info(
