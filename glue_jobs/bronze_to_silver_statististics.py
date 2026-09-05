@@ -109,6 +109,36 @@ logger.info(f"API records read from Bronze: {api_count}")
 logger.info("API Bronze schema:")
 api_df.printSchema()
 
+# ── Step 3: Flatten and normalize Bronze API data ───────────────────────────
+
+logger.info("Flattening API items array...")
+
+api_normalized_df = (
+    api_df
+    .withColumn("item", F.explode(F.col("items")))
+    .select(
+        F.col("item.id").alias("video_id"),
+        F.col("item.snippet.title").alias("title"),
+        F.col("item.snippet.channelTitle").alias("channel_title"),
+        F.col("item.snippet.categoryId").cast(LongType()).alias("category_id"),
+        F.col("item.snippet.publishedAt").alias("publish_time"),
+        F.concat_ws("|", F.col("item.snippet.tags")).alias("tags"),
+        F.col("item.statistics.viewCount").cast(LongType()).alias("views"),
+        F.col("item.statistics.likeCount").cast(LongType()).alias("likes"),
+        F.lit(0).cast(LongType()).alias("dislikes"),
+        F.col("item.statistics.commentCount").cast(LongType()).alias("comment_count"),
+        F.col("item.snippet.thumbnails.default.url").alias("thumbnail_link"),
+        F.lit(False).alias("comments_disabled"),
+        F.lit(False).alias("ratings_disabled"),
+        F.lit(False).alias("video_error_or_removed"),
+        F.col("item.snippet.description").alias("description"),
+        F.col("region").alias("region"),
+        F.col("date").alias("trending_date"),
+    )
+)
+
+logger.info("API data flattened and normalized.")
+
     
     # ── Step 6: Write to Silver Layer ───────────────────────────────────────
 
