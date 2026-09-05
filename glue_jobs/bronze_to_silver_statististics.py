@@ -114,8 +114,8 @@ api_df.printSchema()
 logger.info("Flattening API items array...")
 
 api_normalized_df = (
-    api_df
-    .withColumn("item", F.explode(F.col("items")))
+    api_df 
+    .withColumn("item", F.explode(F.col("items")))#explode the items array to create individual rows for each item
     .select(
         F.col("item.id").alias("video_id"),
         F.col("item.snippet.title").alias("title"),
