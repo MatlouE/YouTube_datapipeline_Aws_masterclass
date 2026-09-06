@@ -168,6 +168,20 @@ kaggle_normalized_df = (
 
 logger.info("Kaggle data normalized.")
 
+# ── Step 5: Combine Kaggle and API data ────────────────────────────────────
+
+logger.info("Combining Kaggle and API datasets...")
+
+df = kaggle_normalized_df.unionByName(
+    api_normalized_df
+)
+
+combined_count = df.count()
+
+logger.info(
+    f"Combined Bronze records: {combined_count}"
+)
+
     # ── Step 6: Write to Silver Layer ───────────────────────────────────────
 
     logger.info(
