@@ -172,6 +172,7 @@ logger.info("Kaggle data normalized.")
 
 logger.info("Combining Kaggle and API datasets...")
 
+#unionByName = merge datasets by column name
 df = kaggle_normalized_df.unionByName(
     api_normalized_df
 )
@@ -182,7 +183,48 @@ logger.info(
     f"Combined Bronze records: {combined_count}"
 )
 
-    # ── Step 6: Write to Silver Layer ───────────────────────────────────────
+
+# ── Step 6: Clean and standardize combined data ─────────────────────────────
+
+logger.info("Cleaning and standardizing combined data...")
+
+# Remove records that cannot be identified as a video.
+df = df.filter(
+    F.col("video_id").isNotNull()
+)
+
+# Normalize region values.
+df = df.withColumn(
+    "region",
+    F.lower(F.trim(F.col("region")))
+)
+
+# Parse trending_date into a proper date.
+df = df.withColumn(
+    "trending_date_parsed",
+    F.to_date(F.col("trending_date"))
+)
+
+# Replace null numeric metrics with zero.
+numeric_columns = [
+    "views",
+    "likes",
+    "dislikes",
+    "comment_count",
+]
+
+for column in numeric_columns:
+    df = df.withColumn(
+        column,
+        F.coalesce(
+            F.col(column),
+            F.lit(0).cast(LongType())
+        )
+    )
+
+logger.info("Data cleansing and standardization complete.")
+
+    # ── Step 7: Write to Silver Layer ───────────────────────────────────────
 
     logger.info(
         f"Writing to Silver: {SILVER_PATH}"
