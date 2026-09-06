@@ -224,7 +224,39 @@ for column in numeric_columns:
 
 logger.info("Data cleansing and standardization complete.")
 
-    # ── Step 7: Write to Silver Layer ───────────────────────────────────────
+# ── Step 7: Calculate engagement metrics ────────────────────────────────────
+
+logger.info("Calculating engagement metrics...")
+
+df = df.withColumn(
+    "like_ratio",
+    F.when(
+        F.col("views") > 0,
+        F.round(
+            F.col("likes") / F.col("views") * 100,
+            4
+        )
+    ).otherwise(0.0)
+)
+
+df = df.withColumn(
+    "engagement_rate",
+    F.when(
+        F.col("views") > 0,
+        F.round(
+            (
+                F.col("likes")
+                + F.col("dislikes")
+                + F.col("comment_count")
+            ) / F.col("views") * 100,
+            4
+        )
+    ).otherwise(0.0)
+)
+
+logger.info("Engagement metrics calculated.")
+
+    # ── Step 8: Write to Silver Layer ───────────────────────────────────────
 
     logger.info(
         f"Writing to Silver: {SILVER_PATH}"
