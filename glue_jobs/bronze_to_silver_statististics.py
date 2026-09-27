@@ -62,6 +62,7 @@ args = getResolvedOptions(
     ],
 )
 
+
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
@@ -87,7 +88,9 @@ SILVER_PATH = f"s3://{SILVER_BUCKET}/youtube/statistics/"
 
 logger.info(f"Bronze Kaggle: {BRONZE_DB}.{KAGGLE_TABLE}")
 logger.info(f"Bronze API: {BRONZE_DB}.{API_TABLE}")
-logger.info(f"Silver: {SILVER_DB}.{SILVER_TABLE} → {SILVER_PATH}")
+logger.info(
+    f"Silver: {SILVER_DB}.{SILVER_TABLE} → {SILVER_PATH}"
+)
 
 
 # ── Step 1: Read Kaggle Bronze ──────────────────────────────────────────────
@@ -104,7 +107,9 @@ kaggle_df = kaggle_source.toDF()
 
 kaggle_count = kaggle_df.count()
 
-logger.info(f"Kaggle records read from Bronze: {kaggle_count}")
+logger.info(
+    f"Kaggle records read from Bronze: {kaggle_count}"
+)
 
 logger.info("Kaggle Bronze schema:")
 kaggle_df.printSchema()
@@ -124,7 +129,9 @@ api_df = api_source.toDF()
 
 api_count = api_df.count()
 
-logger.info(f"API records read from Bronze: {api_count}")
+logger.info(
+    f"API records read from Bronze: {api_count}"
+)
 
 logger.info("API Bronze schema:")
 api_df.printSchema()
@@ -141,11 +148,14 @@ api_normalized_df = (
         F.explode(F.col("items"))
     )
     .select(
+        # Video identity
         F.col("item.id").alias("video_id"),
 
+        # Video metadata
         F.col("item.snippet.title").alias("title"),
 
-        F.col("item.snippet.channelTitle").alias("channel_title"),
+        F.col("item.snippet.channelTitle")
+        .alias("channel_title"),
 
         F.col("item.snippet.categoryId")
         .cast(LongType())
@@ -154,11 +164,12 @@ api_normalized_df = (
         F.col("item.snippet.publishedAt")
         .alias("publish_time"),
 
-        # API does not provide the Kaggle tags field
+        # API does not populate the Kaggle tags field
         F.lit(None)
         .cast(StringType())
         .alias("tags"),
 
+        # Statistics
         F.col("item.statistics.viewCount")
         .cast(LongType())
         .alias("views"),
@@ -194,15 +205,23 @@ api_normalized_df = (
         .cast(BooleanType())
         .alias("video_error_or_removed"),
 
+        # Description
         F.col("item.snippet.description")
         .alias("description"),
 
-        # Metadata created by the API ingestion
+        # API ingestion metadata
         F.col("region")
         .alias("region"),
 
-        F.col("date")
-        .alias("trending_date"),
+        # API Bronze date is already YYYY-MM-DD.
+        # Normalize it into the canonical Silver date format.
+        F.date_format(
+            F.to_date(
+                F.col("date"),
+                "yyyy-MM-dd"
+            ),
+            "yyyy-MM-dd"
+        ).alias("trending_date"),
     )
 )
 
@@ -216,8 +235,10 @@ logger.info("Normalizing Kaggle Bronze data...")
 kaggle_normalized_df = (
     kaggle_df
     .select(
+        # Video identity
         F.col("video_id"),
 
+        # Video metadata
         F.col("title"),
 
         F.col("channel_title"),
@@ -230,6 +251,7 @@ kaggle_normalized_df = (
 
         F.col("tags"),
 
+        # Statistics
         F.col("views")
         .cast(LongType())
         .alias("views"),
@@ -246,6 +268,7 @@ kaggle_normalized_df = (
         .cast(LongType())
         .alias("comment_count"),
 
+        # Metadata
         F.col("thumbnail_link"),
 
         F.col("comments_disabled")
@@ -264,7 +287,15 @@ kaggle_normalized_df = (
 
         F.col("region"),
 
-        F.col("trending_date"),
+        # Kaggle Bronze uses YY.DD.MM.
+        # Convert to the canonical Silver YYYY-MM-DD format.
+        F.date_format(
+            F.to_date(
+                F.col("trending_date"),
+                "yy.dd.MM"
+            ),
+            "yyyy-MM-dd"
+        ).alias("trending_date"),
     )
 )
 
@@ -273,14 +304,14 @@ logger.info("Kaggle data normalized.")
 
 # ── Step 5: Add Internal Source Priority ────────────────────────────────────
 #
-# This is an internal technical field.
+# Internal technical field only.
 # It will NOT be written to Silver.
 #
 # 1 = Kaggle
 # 2 = YouTube API
 #
 # If the same logical observation exists in both sources,
-# the API record will be retained.
+# the API record is retained.
 
 logger.info("Adding internal source priority...")
 
@@ -300,7 +331,8 @@ api_normalized_df = api_normalized_df.withColumn(
 logger.info("Combining Kaggle and API datasets...")
 
 df = kaggle_normalized_df.unionByName(
-    api_normalized_df
+    api_normalized_df,
+    allowMissingColumns=False
 )
 
 combined_count = df.count()
@@ -316,8 +348,7 @@ logger.info(
 #   - filtering null video IDs
 #   - replacing null metrics with zero
 #
-# This ensures the measurements actually tell us something about
-# the incoming Bronze data.
+# This ensures the measurements describe the incoming Bronze data.
 
 logger.info("Running pre-cleaning data quality checks...")
 
@@ -384,21 +415,39 @@ df = df.withColumn(
 )
 
 
-# Normalize trending date.
+# ── Step 9: Validate Canonical Trending Date ────────────────────────────────
 #
-# Keep the original normalized trending_date column as the Silver
-# business field. A temporary parsed date is created for validation
-# and deduplication.
+# Both source-specific normalization steps have already converted
+# trending_date into YYYY-MM-DD.
+#
+# At this point we validate the common Silver representation.
+# Invalid OR null dates are considered a Silver data-quality failure.
 
-df = df.withColumn(
-    "trending_date_parsed",
+logger.info("Checking canonical trending dates...")
+
+invalid_trending_dates = df.filter(
+    F.col("trending_date").isNull()
+    |
     F.to_date(
-        F.col("trending_date")
-    )
+        F.col("trending_date"),
+        "yyyy-MM-dd"
+    ).isNull()
+).count()
+
+logger.info(
+    f"Invalid or null trending dates: "
+    f"{invalid_trending_dates}"
 )
 
+if invalid_trending_dates > 0:
+    raise ValueError(
+        f"Found {invalid_trending_dates} records with invalid "
+        "or null trending dates. Silver write aborted."
+    )
 
-# Replace null numeric metrics with zero.
+
+# ── Step 10: Replace Null Numeric Metrics ───────────────────────────────────
+
 numeric_columns = [
     "views",
     "likes",
@@ -415,31 +464,12 @@ for column in numeric_columns:
         )
     )
 
-
-logger.info("Data cleansing and standardization complete.")
-
-
-# ── Step 9: Validate Parsed Dates ───────────────────────────────────────────
-
-logger.info("Checking trending date parsing...")
-
-invalid_trending_dates = df.filter(
-    F.col("trending_date").isNotNull()
-    & F.col("trending_date_parsed").isNull()
-).count()
-
 logger.info(
-    f"Invalid trending dates: {invalid_trending_dates}"
+    "Data cleansing and standardization complete."
 )
 
-if invalid_trending_dates > 0:
-    logger.warning(
-        f"Found {invalid_trending_dates} records with invalid "
-        "trending dates."
-    )
 
-
-# ── Step 10: Calculate Engagement Metrics ───────────────────────────────────
+# ── Step 11: Calculate Engagement Metrics ───────────────────────────────────
 
 logger.info("Calculating engagement metrics...")
 
@@ -478,7 +508,7 @@ df = df.withColumn(
 logger.info("Engagement metrics calculated.")
 
 
-# ── Step 11: Add Processing Metadata ────────────────────────────────────────
+# ── Step 12: Add Processing Metadata ────────────────────────────────────────
 
 logger.info("Adding processing metadata...")
 
@@ -498,7 +528,7 @@ df = df.withColumn(
 logger.info("Processing metadata added.")
 
 
-# ── Step 12: Deduplicate ────────────────────────────────────────────────────
+# ── Step 13: Deduplicate ────────────────────────────────────────────────────
 #
 # Business grain:
 #
@@ -536,25 +566,27 @@ df = (
 logger.info("Deduplication complete.")
 
 
-# ── Step 13: Remove Temporary Columns ───────────────────────────────────────
+# ── Step 14: Remove Temporary Columns ───────────────────────────────────────
 
 logger.info("Removing temporary transformation columns...")
 
 df = df.drop(
-    "_source_priority",
-    "trending_date_parsed"
+    "_source_priority"
 )
-
 
 logger.info("Temporary columns removed.")
 
 
-# ── Step 14: Final Data Quality Checks ──────────────────────────────────────
+# ── Step 15: Final Data Quality Checks ──────────────────────────────────────
 
 logger.info("Running final Silver data quality checks...")
 
 final_null_video_ids = df.filter(
     F.col("video_id").isNull()
+).count()
+
+final_null_trending_dates = df.filter(
+    F.col("trending_date").isNull()
 ).count()
 
 final_negative_views = df.filter(
@@ -578,6 +610,7 @@ final_duplicate_records = (
 logger.info(
     f"Final quality results — "
     f"null video_id: {final_null_video_ids}, "
+    f"null trending_date: {final_null_trending_dates}, "
     f"negative views: {final_negative_views}, "
     f"duplicate business keys: {final_duplicate_records}"
 )
@@ -586,6 +619,12 @@ logger.info(
 if final_null_video_ids > 0:
     raise ValueError(
         "Final Silver dataset contains null video IDs."
+    )
+
+
+if final_null_trending_dates > 0:
+    raise ValueError(
+        "Final Silver dataset contains null trending dates."
     )
 
 
@@ -601,10 +640,12 @@ if final_duplicate_records > 0:
     )
 
 
-logger.info("Final Silver data quality checks passed.")
+logger.info(
+    "Final Silver data quality checks passed."
+)
 
 
-# ── Step 15: Finalize Silver Dataset ────────────────────────────────────────
+# ── Step 16: Finalize Silver Dataset ────────────────────────────────────────
 
 logger.info("Finalizing Silver dataset...")
 
@@ -614,12 +655,11 @@ logger.info(
     f"Silver dataset ready: {clean_count} records"
 )
 
-
 logger.info("Final Silver schema:")
 df.printSchema()
 
 
-# ── Step 16: Write Silver Parquet ───────────────────────────────────────────
+# ── Step 17: Write Silver Parquet ───────────────────────────────────────────
 
 logger.info(
     f"Writing Silver dataset to: {SILVER_PATH}"
@@ -663,7 +703,7 @@ logger.info(
 )
 
 
-# ── Step 17: Commit Glue Job ────────────────────────────────────────────────
+# ── Step 18: Commit Glue Job ────────────────────────────────────────────────
 
 job.commit()
 
